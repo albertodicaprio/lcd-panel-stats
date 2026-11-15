@@ -41,6 +41,8 @@ journalctl -u lcd-stats-client.service -f
 
 Run these commands on the machine hosting the relevant role. After editing config, restart with `sudo systemctl restart lcd-stats-server.service` or `sudo systemctl restart lcd-stats-client.service`. Re-run `python3 install.py ROLE` after moving the clone or upgrading dependencies so uv and systemd use the new location.
 
+To uninstall a service on its machine, run `python3 install.py remove server` or `python3 install.py remove client`. This stops and disables the service, removes its unit from `/etc/systemd/system/`, and reloads systemd. Preview the commands with `python3 install.py remove ROLE --dry-run`. Removal leaves the role's `config.toml`, uv environment, and clone in place so it can be installed again later.
+
 If the server reports `"gpu_temp":"N/A"`, check `nvidia-smi` and the GPU index. If `"cpu_temp":"N/A"`, adjust the CPU sensor settings. If the Pi shows a fetch error, check the URL, network reachability, and server service. On the Pi, the service account must have GPIO access.
 
 ## Development

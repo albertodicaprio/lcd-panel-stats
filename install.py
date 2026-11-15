@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Install either app and its systemd service on the current machine."""
+"""Install or remove a client or server systemd service on this machine."""
 
 import argparse
 import getpass
@@ -43,17 +43,49 @@ def service_quote(value):
     return '"' + str(value).replace("\\", "\\\\").replace('"', '\\"').replace("%", "%%") + '"'
 
 
+def remove_service(role, dry_run):
+    service_name = SERVICES[role]
+    service_path = Path("/etc/systemd/system") / service_name
+    if not service_path.exists():
+        print(f"No unit found at {service_path}; nothing to remove.")
+        return
+
+    commands = [
+        ["sudo", "systemctl", "disable", "--now", service_name],
+        ["sudo", "rm", "--", str(service_path)],
+        ["sudo", "systemctl", "daemon-reload"],
+    ]
+    if dry_run:
+        for command in commands:
+            print("Would run:", " ".join(command))
+        return
+
+    for command in commands:
+        subprocess.run(command, check=True)
+    print(f"Removed {service_name}. Configuration and uv dependencies remain in {ROOT / role}.")
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("command_or_role", nargs="?", choices=("install", "remove", *SERVICES))
     parser.add_argument("role", nargs="?", choices=SERVICES)
-    parser.add_argument("--dry-run", action="store_true", help="show files without installing")
+    parser.add_argument("--dry-run", action="store_true", help="show planned actions without changing anything")
     args = parser.parse_args()
 
-    role = args.role or ask("Install client or server").lower()
+    command = args.command_or_role if args.command_or_role in ("install", "remove") else "install"
+    if args.command_or_role in SERVICES:
+        if args.role:
+            parser.error("specify one role only")
+        role = args.command_or_role
+    else:
+        role = args.role or ask(f"{command.capitalize()} client or server").lower()
     if role not in SERVICES:
         parser.error("role must be client or server")
     if os.geteuid() == 0:
         parser.error("run this script as the service user, without sudo")
+    if command == "remove":
+        remove_service(role, args.dry_run)
+        return
 
     app_dir = ROOT / role
     config_path = app_dir / "config.toml"
