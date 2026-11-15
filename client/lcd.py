@@ -1,6 +1,7 @@
 """Display the server's statistics on a Raspberry Pi character LCD."""
 
 import os
+import subprocess
 import time
 import tomllib
 from pathlib import Path
@@ -27,9 +28,13 @@ def page_network(data):
     return f"UP:{data['net_sent_kbs']:>5}KB/s", f"DN:{data['net_recv_kbs']:>5}KB/s"
 
 
+def request_shutdown():
+    subprocess.run(["sudo", "-n", "/usr/bin/systemctl", "poweroff"], check=True)
+
+
 def main():
     from RPLCD.gpio import CharLCD, GPIO
-    from gpiozero import Device
+    from gpiozero import Button, Device
     from gpiozero.pins.lgpio import LGPIOFactory
 
     config = load_config()
@@ -46,7 +51,16 @@ def main():
     )
     pages = (page_cpu_gpu, page_ram, page_network)
     page_index = 0
+    button = None
     try:
+        shutdown = config.get("shutdown_button", {})
+        if shutdown.get("enabled", False):
+            pin = shutdown["pin"]
+            if pin in (display["pin_rs"], display["pin_e"], *display["pins_data"]):
+                raise ValueError(f"Shutdown button GPIO {pin} is already used by the LCD")
+            button = Button(pin, pull_up=True, bounce_time=shutdown["bounce_time_seconds"])
+            button.when_pressed = request_shutdown
+
         while True:
             try:
                 response = requests.get(server["url"], timeout=server["timeout_seconds"])
@@ -65,6 +79,8 @@ def main():
     except KeyboardInterrupt:
         pass
     finally:
+        if button is not None:
+            button.close()
         lcd.clear()
 
 

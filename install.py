@@ -6,12 +6,15 @@ import getpass
 import json
 import os
 from pathlib import Path
+import re
 import shutil
 import subprocess
+import tomllib
 
 
 ROOT = Path(__file__).resolve().parent
 SERVICES = {"client": "lcd-stats-client.service", "server": "lcd-stats-server.service"}
+SHUTDOWN_SUDOERS = Path("/etc/sudoers.d/lcd-stats-client")
 
 
 def ask(prompt, default=None):
@@ -43,18 +46,40 @@ def service_quote(value):
     return '"' + str(value).replace("\\", "\\\\").replace('"', '\\"').replace("%", "%%") + '"'
 
 
+def shutdown_sudoers(config_text, user):
+    if not tomllib.loads(config_text).get("shutdown_button", {}).get("enabled", False):
+        return None
+    if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_.-]*\$?", user):
+        raise ValueError(f"Unsupported service user for sudoers: {user!r}")
+    return f"{user} ALL=(root) NOPASSWD: /usr/bin/systemctl poweroff\n"
+
+
+def install_shutdown_sudoers(policy):
+    subprocess.run(["/usr/sbin/visudo", "-cf", "/dev/stdin"], input=policy, text=True, check=True)
+    subprocess.run(
+        ["sudo", "install", "-m", "0440", "/dev/stdin", str(SHUTDOWN_SUDOERS)],
+        input=policy, text=True, check=True,
+    )
+
+
 def remove_service(role, dry_run):
     service_name = SERVICES[role]
     service_path = Path("/etc/systemd/system") / service_name
-    if not service_path.exists():
+    has_service = service_path.exists()
+    has_sudoers = role == "client" and SHUTDOWN_SUDOERS.exists()
+    if not has_service and not has_sudoers:
         print(f"No unit found at {service_path}; nothing to remove.")
         return
 
-    commands = [
-        ["sudo", "systemctl", "disable", "--now", service_name],
-        ["sudo", "rm", "--", str(service_path)],
-        ["sudo", "systemctl", "daemon-reload"],
-    ]
+    commands = []
+    if has_service:
+        commands.extend([
+            ["sudo", "systemctl", "disable", "--now", service_name],
+            ["sudo", "rm", "--", str(service_path)],
+            ["sudo", "systemctl", "daemon-reload"],
+        ])
+    if has_sudoers:
+        commands.append(["sudo", "rm", "--", str(SHUTDOWN_SUDOERS)])
     if dry_run:
         for command in commands:
             print("Would run:", " ".join(command))
@@ -110,6 +135,8 @@ def main():
             config_text = config_text.replace('sensor = "k10temp"', f"sensor = {json.dumps(sensor)}", 1)
             config_text = config_text.replace('["Tccd1", "Tctl"]', json.dumps(label_list), 1)
 
+    policy = shutdown_sudoers(config_text if config_text is not None else config_path.read_text(), getpass.getuser()) if role == "client" else None
+
     uv = shutil.which("uv")
     if uv is None:
         parser.error("uv is required; install it first using the README instructions")
@@ -136,11 +163,18 @@ def main():
     if args.dry_run:
         print(f"Config: {config_path}\n{config_text or '(existing file retained)'}")
         print(f"Service: {service_path}\n{unit}")
+        if policy:
+            print(f"Sudoers: {SHUTDOWN_SUDOERS}\n{policy}")
         return
 
     if config_text is not None:
         config_path.write_text(config_text)
     subprocess.run([uv, "sync", "--project", str(app_dir), "--locked"], check=True)
+    if role == "client":
+        if policy:
+            install_shutdown_sudoers(policy)
+        elif SHUTDOWN_SUDOERS.exists():
+            subprocess.run(["sudo", "rm", "--", str(SHUTDOWN_SUDOERS)], check=True)
     subprocess.run(["sudo", "install", "-m", "0644", "/dev/stdin", str(service_path)], input=unit, text=True, check=True)
     subprocess.run(["sudo", "systemctl", "daemon-reload"], check=True)
     subprocess.run(["sudo", "systemctl", "enable", "--now", SERVICES[role]], check=True)

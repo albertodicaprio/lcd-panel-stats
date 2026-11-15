@@ -26,7 +26,22 @@ Start the server before the client. Ensure the server's chosen port is reachable
 The installer keeps existing `config.toml` files when run again. Edit them to change settings, then restart the relevant service. The tracked example files describe every setting:
 
 - `server/config.example.toml`: HTTP bind host and port, NVIDIA GPU index, CPU sensor name and preferred sensor labels. The default CPU sensor is `k10temp` with `Tccd1` then `Tctl`, matching the original AMD setup. For other CPUs, inspect the available names with `sensors` or `uv run --project server python -c 'import psutil; print(psutil.sensors_temperatures())'`.
-- `client/config.example.toml`: server URL, request timeout, LCD dimensions and BCM pin numbers, and refresh interval. The default wiring is RS=26, E=19, data=25,24,22,27.
+- `client/config.example.toml`: server URL, request timeout, LCD dimensions and BCM pin numbers, refresh interval, and optional shutdown button. The default LCD wiring is RS=26, E=19, data=25,24,22,27.
+
+### Raspberry Pi shutdown button
+
+Wire a normally open push button between **GPIO 17 (BCM)** and **GND**. The client enables GPIO's internal pull-up, so no external resistor is needed. Keep the button on a pin that is not used by the LCD. In `client/config.toml`, add or update:
+
+```toml
+[shutdown_button]
+enabled = true
+pin = 17
+bounce_time_seconds = 0.1
+```
+
+Run `python3 install.py client` again on the Pi after enabling the button. The installer adds `/etc/sudoers.d/lcd-stats-client`, granting only the client service account passwordless access to `/usr/bin/systemctl poweroff`. The client invokes it with `sudo -n` when the button is pressed; do not run the whole client service as root. The installer removes this permission if the button is later disabled or the client service is removed. Inspect the planned permission with `python3 install.py --dry-run client`.
+
+Pressing the button starts an immediate system shutdown. Save any work on the Pi before testing it. Hardware operation must be checked on the Pi; local tests can check configuration and command wiring only.
 
 Configuration is read from the role's `config.toml` by default. For a temporary override, set `LCD_STATS_CONFIG` to an absolute TOML file path. Keep the client URL pointed at `/stats`.
 
@@ -41,7 +56,7 @@ journalctl -u lcd-stats-client.service -f
 
 Run these commands on the machine hosting the relevant role. After editing config, restart with `sudo systemctl restart lcd-stats-server.service` or `sudo systemctl restart lcd-stats-client.service`. Re-run `python3 install.py ROLE` after moving the clone or upgrading dependencies so uv and systemd use the new location.
 
-To uninstall a service on its machine, run `python3 install.py remove server` or `python3 install.py remove client`. This stops and disables the service, removes its unit from `/etc/systemd/system/`, and reloads systemd. Preview the commands with `python3 install.py remove ROLE --dry-run`. Removal leaves the role's `config.toml`, uv environment, and clone in place so it can be installed again later.
+To uninstall a service on its machine, run `python3 install.py remove server` or `python3 install.py remove client`. This stops and disables the service, removes its unit from `/etc/systemd/system/`, and reloads systemd. Client removal also removes the shutdown button's sudoers permission if present. Preview the commands with `python3 install.py remove ROLE --dry-run`. Removal leaves the role's `config.toml`, uv environment, and clone in place so it can be installed again later.
 
 If the server reports `"gpu_temp":"N/A"`, check `nvidia-smi` and the GPU index. If `"cpu_temp":"N/A"`, adjust the CPU sensor settings. If the Pi shows a fetch error, check the URL, network reachability, and server service. On the Pi, the service account must have GPIO access.
 
