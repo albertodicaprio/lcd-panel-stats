@@ -5,7 +5,7 @@ A small two machine setup: the **server** exposes CPU temperature, NVIDIA GPU te
 ## Requirements
 
 - Server: Linux, Python 3.11 or newer, an NVIDIA GPU with a working driver (`nvidia-smi` should work), and network access from the Pi.
-- Client: Raspberry Pi running Linux with Python 3.11 or newer, a supported GPIO setup, and a character LCD wired to the pins in `client/config.example.toml` (or edit the pins in `client/config.toml`). On Raspberry Pi OS, install build prerequisites with `sudo apt install python3-dev build-essential` before running the installer; `RPi.GPIO` is compiled from source and needs `Python.h`.
+- Client: Raspberry Pi running Linux with Python 3.11 or newer, a supported GPIO setup, and a character LCD wired to the pins in `client/config.example.toml` (or edit the pins in `client/config.toml`). On Raspberry Pi OS, install build prerequisites with `sudo apt install python3-dev build-essential swig` before running the installer. The GPIO dependencies build native code; `RPi.GPIO` needs `Python.h`, and `lgpio` may need SWIG.
 - Both: [uv](https://docs.astral.sh/uv/getting-started/installation/), `git`, and `sudo` access to install a systemd service.
 
 Clone the repository on **both** machines. Run the installer as the normal account that will run the service, from either machine's clone:
