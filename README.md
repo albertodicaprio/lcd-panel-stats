@@ -11,7 +11,7 @@ A small two machine setup: the **server** exposes CPU temperature, NVIDIA GPU te
 Clone the repository on **both** machines. Run the installer as the normal account that will run the service, from either machine's clone:
 
 ```bash
-git clone https://github.com/YOUR_USER/lcd-panel-stats.git
+git clone https://github.com/albertodicaprio/lcd-panel-stats.git
 cd lcd-panel-stats
 python3 install.py server  # on the NVIDIA machine
 python3 install.py client  # on the Raspberry Pi
@@ -59,9 +59,8 @@ To update dependencies, edit the role's `pyproject.toml`, run `uv lock --project
 
 ## Publishing to GitHub
 
-The repository is initialized locally on the `main` branch. Create an empty GitHub repository named `lcd-panel-stats`, then set its remote and push after reviewing the files:
+The repository is initialized locally on the `main` branch with `origin` set to `https://github.com/albertodicaprio/lcd-panel-stats.git`. Create that GitHub repository if it does not already exist, then push after reviewing the files:
 
 ```bash
-git remote add origin git@github.com:YOUR_USER/lcd-panel-stats.git
 git push -u origin main
 ```
