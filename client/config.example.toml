@@ -1,0 +1,11 @@
+[server]
+url = "http://YOUR_SERVER_HOST:5000/stats"
+timeout_seconds = 2
+
+[display]
+columns = 16
+rows = 2
+pin_rs = 26
+pin_e = 19
+pins_data = [25, 24, 22, 27]
+refresh_seconds = 3

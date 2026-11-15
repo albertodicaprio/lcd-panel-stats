@@ -1,0 +1,11 @@
+[project]
+name = "lcd-panel-stats-client"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = [
+    "RPLCD>=1.4.0",
+    "gpiozero>=2.0",
+    "lgpio>=0.2.2.0",
+    "requests>=2.32",
+    "RPi.GPIO>=0.7.1",
+]

@@ -1,0 +1,9 @@
+[project]
+name = "lcd-panel-stats-server"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = [
+    "flask>=3.0",
+    "nvidia-ml-py>=13.615.71",
+    "psutil>=5.9",
+]
