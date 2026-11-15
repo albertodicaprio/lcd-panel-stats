@@ -9,3 +9,6 @@ dependencies = [
     "requests>=2.32",
     "RPi.GPIO>=0.7.1",
 ]
+
+[tool.uv.extra-build-variables]
+lgpio = { PYPI = "1" }

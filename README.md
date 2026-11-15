@@ -5,7 +5,7 @@ A small two machine setup: the **server** exposes CPU temperature, NVIDIA GPU te
 ## Requirements
 
 - Server: Linux, Python 3.11 or newer, an NVIDIA GPU with a working driver (`nvidia-smi` should work), and network access from the Pi.
-- Client: Raspberry Pi running Linux with Python 3.11 or newer, a supported GPIO setup, and a character LCD wired to the pins in `client/config.example.toml` (or edit the pins in `client/config.toml`). On Raspberry Pi OS, install build prerequisites with `sudo apt install python3-dev build-essential swig` before running the installer. The GPIO dependencies build native code; `RPi.GPIO` needs `Python.h`, and `lgpio` may need SWIG.
+- Client: Raspberry Pi running Linux with Python 3.11 or newer, a supported GPIO setup, and a character LCD wired to the pins in `client/config.example.toml` (or edit the pins in `client/config.toml`). On Raspberry Pi OS, install build prerequisites with `sudo apt install python3-dev build-essential swig` before running the installer. The GPIO dependencies build native code; `RPi.GPIO` needs `Python.h`, and `lgpio` needs SWIG. The uv project config builds `lgpio` with its C library included, so a separate `liblgpio` install is not needed.
 - Both: [uv](https://docs.astral.sh/uv/getting-started/installation/), `git`, and `sudo` access to install a systemd service.
 
 Clone the repository on **both** machines. Run the installer as the normal account that will run the service, from either machine's clone:
@@ -46,6 +46,8 @@ To uninstall a service on its machine, run `python3 install.py remove server` or
 If the server reports `"gpu_temp":"N/A"`, check `nvidia-smi` and the GPU index. If `"cpu_temp":"N/A"`, adjust the CPU sensor settings. If the Pi shows a fetch error, check the URL, network reachability, and server service. On the Pi, the service account must have GPIO access.
 
 If the client dependency installation fails with `Python.h: No such file or directory`, install `python3-dev` as above and rerun `python3 install.py client`. If the error persists, check which Python uv selected with `uv python find --project client`; its version must match the installed development headers.
+
+If the `lgpio` build fails with `cannot find -llgpio`, update the clone and rerun `python3 install.py client`. The client project now sets `PYPI=1` only for the `lgpio` build, which makes its upstream build include the C library instead of linking to an external copy.
 
 ## Development
 
