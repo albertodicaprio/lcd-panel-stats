@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Install or remove a client or server systemd service on this machine."""
+"""Install or remove a server, LCD client, or CPU gauge systemd service."""
 
 import argparse
 import getpass
@@ -13,7 +13,12 @@ import tomllib
 
 
 ROOT = Path(__file__).resolve().parent
-SERVICES = {"client": "lcd-stats-client.service", "server": "lcd-stats-server.service"}
+SERVICES = {
+    "client": "lcd-stats-client.service",
+    "cpu_gauge": "lcd-stats-cpu-gauge.service",
+    "server": "lcd-stats-server.service",
+}
+SCRIPTS = {"client": "lcd.py", "cpu_gauge": "cpu_gauge.py", "server": "stats.py"}
 SHUTDOWN_SUDOERS = Path("/etc/sudoers.d/lcd-stats-client")
 
 
@@ -103,9 +108,9 @@ def main():
             parser.error("specify one role only")
         role = args.command_or_role
     else:
-        role = args.role or ask(f"{command.capitalize()} client or server").lower()
+        role = args.role or ask(f"{command.capitalize()} client, cpu_gauge, or server").lower()
     if role not in SERVICES:
-        parser.error("role must be client or server")
+        parser.error("role must be client, cpu_gauge, or server")
     if os.geteuid() == 0:
         parser.error("run this script as the service user, without sudo")
     if command == "remove":
@@ -117,7 +122,7 @@ def main():
     config_text = None
     if not config_path.exists():
         config_text = (app_dir / "config.example.toml").read_text()
-        if role == "client":
+        if role in ("client", "cpu_gauge"):
             host = ask_host()
             port = ask_port()
             config_text = config_text.replace("YOUR_SERVER_HOST:5000", f"{host}:{port}")
@@ -140,12 +145,12 @@ def main():
     uv = shutil.which("uv")
     if uv is None:
         parser.error("uv is required; install it first using the README instructions")
-    script = app_dir / ("lcd.py" if role == "client" else "stats.py")
+    script = app_dir / SCRIPTS[role]
     unit = "\n".join([
         "[Unit]",
         f"Description=LCD panel stats {role}",
-        "Wants=network-online.target" if role == "client" else "After=network.target",
-        "After=network-online.target" if role == "client" else "",
+        "Wants=network-online.target" if role != "server" else "After=network.target",
+        "After=network-online.target" if role != "server" else "",
         "",
         "[Service]",
         f"User={getpass.getuser()}",

@@ -1,6 +1,7 @@
 """Checks for service removal without touching the host's systemd state."""
 
 import io
+import sys
 from contextlib import redirect_stdout
 from unittest import TestCase
 from unittest.mock import call, patch
@@ -63,3 +64,20 @@ class ShutdownSudoersTests(TestCase):
             call(["/usr/sbin/visudo", "-cf", "/dev/stdin"], input=policy, text=True, check=True),
             call(["sudo", "install", "-m", "0440", "/dev/stdin", "/etc/sudoers.d/lcd-stats-client"], input=policy, text=True, check=True),
         ])
+
+
+class CpuGaugeInstallTests(TestCase):
+    @patch("install.os.geteuid", return_value=1000)
+    @patch("install.shutil.which", return_value="/usr/bin/uv")
+    @patch("install.Path.exists", return_value=False)
+    @patch("builtins.input", side_effect=["server.local", "5000"])
+    def test_dry_run_uses_gauge_project_and_service(self, ask, exists, which, geteuid):
+        output = io.StringIO()
+        with patch.object(sys, "argv", ["install.py", "cpu_gauge", "--dry-run"]), redirect_stdout(output):
+            install.main()
+
+        plan = output.getvalue()
+        self.assertIn('url = "http://server.local:5000/stats"', plan)
+        self.assertIn("lcd-stats-cpu-gauge.service", plan)
+        self.assertIn("cpu_gauge/cpu_gauge.py", plan)
+        self.assertIn("Wants=network-online.target", plan)

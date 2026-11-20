@@ -1,0 +1,9 @@
+[server]
+url = "http://YOUR_SERVER_HOST:5000/stats"
+timeout_seconds = 2
+
+[gauge]
+pin = 17
+poll_seconds = 0.5
+update_seconds = 0.05
+max_step = 0.06
