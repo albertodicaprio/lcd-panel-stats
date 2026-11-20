@@ -1,6 +1,6 @@
 # LCD panel stats
 
-A small two machine setup: the **server** exposes CPU temperature, NVIDIA GPU temperature, RAM use, and network speeds as JSON; the **client** polls it and rotates those values on a 16 × 2 character LCD attached to a Raspberry Pi.
+A small two machine setup: the **server** exposes CPU temperature and usage, NVIDIA GPU temperature, RAM use, and network speeds as JSON; the **client** polls it and rotates its existing values on a 16 × 2 character LCD attached to a Raspberry Pi.
 
 ## Requirements
 
@@ -20,6 +20,8 @@ python3 install.py client  # on the Raspberry Pi
 The server installer asks for the HTTP port, GPU index, and CPU temperature sensor and labels; defaults match the original setup. The client installer asks for the server hostname or IP address and port. Each installer creates its role's ignored `config.toml`, runs `uv sync --locked`, writes a systemd unit under `/etc/systemd/system/`, and enables and starts it. It derives the service user's name and paths from the current account and clone location. Run `python3 install.py --dry-run server` or `python3 install.py --dry-run client` to inspect the config and unit before installation.
 
 Start the server before the client. Ensure the server's chosen port is reachable from the Pi. Test it with `curl http://SERVER_HOST:5000/stats`. The server listens on all interfaces by default; set `bind_host` in `server/config.toml` if a different interface is needed. The HTTP endpoint has no authentication, so use it only on a trusted network or behind suitable network controls.
+
+The `/stats` JSON includes `cpu_usage_percent`, a number from 0 to 100 representing overall CPU use sampled over 0.1 seconds. Existing fields remain available; the client does not display this new field.
 
 ## Configuration
 

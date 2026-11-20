@@ -64,6 +64,7 @@ def stats():
     net_sent, net_recv = get_network_speed()
     return jsonify({
         "cpu_temp": get_cpu_temp(),
+        "cpu_usage_percent": round(psutil.cpu_percent(interval=0.1), 1),
         "gpu_temp": get_nvidia_gpu_temp(),
         "ram_used_gb": round((ram.total - ram.available) / (1024 ** 3), 2),
         "ram_total_gb": round(ram.total / (1024 ** 3), 2),
