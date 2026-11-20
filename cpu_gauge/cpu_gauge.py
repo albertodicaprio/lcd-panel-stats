@@ -1,5 +1,6 @@
 """Drive a Raspberry Pi servo gauge from the server's CPU usage metric."""
 
+import argparse
 import json
 import math
 import os
@@ -36,7 +37,37 @@ def move_toward(current, target, max_step):
     return current + max(-max_step, min(max_step, target - current))
 
 
+def manual_test(servo, gauge):
+    position = -1.0
+    print("Enter CPU usage from 0 to 100; enter q to quit.")
+    while True:
+        try:
+            answer = input("CPU usage %: ").strip()
+        except EOFError:
+            return
+        if answer.lower() == "q":
+            return
+        try:
+            percent = float(answer)
+            if not math.isfinite(percent) or not 0 <= percent <= 100:
+                raise ValueError
+        except ValueError:
+            print("Enter a number from 0 to 100, or q to quit.")
+            continue
+
+        target = cpu_to_servo(percent)
+        while position != target:
+            position = move_toward(position, target, gauge["max_step"])
+            servo.value = position
+            time.sleep(gauge["update_seconds"])
+        print(f"Gauge set to {percent:g}%")
+
+
 def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--manual", action="store_true", help="move the servo using values entered at the prompt")
+    args = parser.parse_args()
+
     config = load_config()
     server = config["server"]
     gauge = config["gauge"]
@@ -54,6 +85,9 @@ def main():
     last_poll = float("-inf")
     try:
         servo.value = current_position
+        if args.manual:
+            manual_test(servo, gauge)
+            return
         print(f"CPU gauge started. Fetching stats from {server['url']}")
         while True:
             now = time.monotonic()

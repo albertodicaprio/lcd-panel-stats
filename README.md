@@ -37,6 +37,15 @@ The installer keeps existing `config.toml` files when run again. Edit them to ch
 
 Connect the servo signal wire to **GPIO 17 (BCM)**, or change `pin` in `cpu_gauge/config.toml`. Power the servo from a supply rated for its current and connect the supply ground to the Pi ground. If the LCD client and gauge run on the same Pi, use distinct GPIO pins for the servo, LCD, and optional shutdown button. The gauge maps 0% CPU usage to one end of travel and 100% to the other; `max_step` limits movement per update. Verify the direction and physical travel on the Pi before attaching the needle.
 
+To test servo travel without the server, stop the gauge service if it is running, then start manual mode from the repository root on the Pi:
+
+```bash
+sudo systemctl stop lcd-stats-cpu-gauge.service
+uv run --project cpu_gauge python cpu_gauge/cpu_gauge.py --manual
+```
+
+Enter `0`, `50`, and `100` to move from one end through the middle to the other. Enter `q` to quit. Manual mode uses the configured pin, `max_step`, and `update_seconds`; test with the needle detached first. Restart the service afterward with `sudo systemctl start lcd-stats-cpu-gauge.service`.
+
 ### Raspberry Pi shutdown button
 
 Wire a normally open push button between **GPIO 17 (BCM)** and **GND**. The client enables GPIO's internal pull-up, so no external resistor is needed. Keep the button on a pin that is not used by the LCD. In `client/config.toml`, add or update:

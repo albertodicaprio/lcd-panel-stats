@@ -2,6 +2,7 @@
 
 import io
 import os
+from contextlib import redirect_stdout
 from pathlib import Path
 from unittest import TestCase
 from unittest.mock import patch
@@ -30,3 +31,29 @@ class CpuGaugeTests(TestCase):
         self.assertEqual([cpu_gauge.cpu_to_servo(value) for value in (-10, 0, 50, 100, 110)], [-1, -1, 0, 1, 1])
         self.assertEqual(cpu_gauge.move_toward(-1, 1, 0.06), -0.94)
         self.assertEqual(cpu_gauge.move_toward(0.98, 1, 0.06), 1)
+
+    def test_manual_input_moves_through_gauge_range(self):
+        class RecordingServo:
+            def __init__(self):
+                self.positions = []
+
+            @property
+            def value(self):
+                return self.positions[-1] if self.positions else -1
+
+            @value.setter
+            def value(self, position):
+                self.positions.append(position)
+
+        servo = RecordingServo()
+        output = io.StringIO()
+        with (
+            patch("builtins.input", side_effect=["NaN", "101", "0", "50", "100", "q"]),
+            patch.object(cpu_gauge.time, "sleep") as sleep,
+            redirect_stdout(output),
+        ):
+            cpu_gauge.manual_test(servo, {"max_step": 0.5, "update_seconds": 0.05})
+
+        self.assertEqual(servo.positions, [-0.5, 0, 0.5, 1])
+        self.assertEqual(sleep.call_count, 4)
+        self.assertIn("Enter a number from 0 to 100", output.getvalue())
